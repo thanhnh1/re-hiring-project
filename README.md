@@ -27,3 +27,12 @@ A new development team is tasked with creating a web based visualization tool. Y
 * Don’t reinvent the wheel
 * Commit often and don't squash commits
 * Don’t spend more than a few hours on the challenge. If some requirements could not be completed, let us know why.
+
+## How to install and deploy the application
+* The sample project based on .Net Core 3.1 with the command generates sample code: _dotnet new webapp -o SampleApp_
+* _appsetting.<env>.json_ configuration files have been added to differentiate configuration between different environments.
+* The deployment workflow is placed in the **.github** folder, there are two main folders: _actions_ and _workflow_
+  - actions: contains a _deploy.yml_ file that configures common steps for application deployment.
+  - workflow: contains a _dotnet.yml_ file configuration for environments, currently non-prod and prod environments, if there is a new environment, we can add a job below.
+
+* (Note: the above configurations are based on practical experience and have not been tested due to lack of current environment, time, etc. Setting up a test environment will add more time to this challenge.)
