@@ -1,0 +1,83 @@
+name: "Deploy Environment"
+
+description: "Deploy an environment"
+
+inputs:
+  environment:
+    account_name:
+      description: "AWS Account Name"
+      require: true
+    account_id:
+      description: "AWS Account ID"
+      require: true
+    region:
+      description: "AWS Region"
+      default: "ca-central-1"
+      require: true
+    environment:
+      description: "Application environment"
+      require: true
+    artifact_name:
+      description: "Aftifact store packages"
+run:
+  using:
+  steps:
+    - name: Access AWS Account
+      env:
+        AWS_ACCOUNT_NAME: ${{ inputs.account_name}}
+        AWS_ACCOUNT_ID: ${{ inputs.account_id}}
+        AWS_REGION: ${{ inputs.region}}
+      uses: actions/cai-secure-access@v3
+
+    - name: Get current date
+      id: date
+      run: echo "::set-output name=date::$(date +'%Y%m%d%H%M%S')"
+
+    - name: Set current date
+      run: |
+        echo "VERSIONS=${{ steps.date.outputs.date }}" >> $GITHUB_ENV
+
+    - name: Checkout source code
+      uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GH_TOKEN }}
+        submodules: true
+    - name: Setup dotnet
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: '3.1.x'
+    
+    - name: Display dotnet version
+      run: dotnet --version
+      
+    - name: Install dependencies and build code
+      shell: bash
+      env:
+        ENVIRONMENT: ${{ inputs.environment}}
+        ARTIFACT: ${{ inputs.artifact_name}}
+      run: |
+        dotnet publish SampleApp.csproj -c ${ENVIRONMENT}
+        cd bin/$ENVIRONMENT/netcoreapp3.1/publish
+        zip -r wwwroot.zip `ls -1 -d */`
+        rm -rf `ls -1 -d */`
+        zip ../site.zip *
+        mkdir tmp
+        cp bin/${ENVIRONMENT}/netcoreapp3.1/site.zip tmp/
+        cp deployments/scripts/* tmp/
+        cd tmp
+        zip webapp-deployable.zip *
+
+        cd tmp
+        echo 'upload to s3'
+        aws s3 cp webapp-deployable.zip s3://${ARTIFACT} --region ca-central-1
+        echo 'get current status of elasticbeanstalk'
+        currentStatus=`aws elasticbeanstalk describe-environments --environment-names beanstalk-env --region ca-central-1 | jq '."Environments" | .[] | ."Status"'`
+        echo $currentStatus
+        if [[ $currentStatus == '"Ready"' ]]
+        then
+          echo 'create app version'
+          aws elasticbeanstalk create-application-version --application-name beanstalk-app  --version-label "v1.0-$VERSIONS" --source-bundle S3Bucket=${ARTIFACT},S3Key=webapp-deployable.zip --region ca-central-1
+          echo 'update environment'
+          aws elasticbeanstalk update-environment --environment-name beanstalk-env --version-label "v1.0-$VERSIONS" --region ca-central-1
+        fi
+
