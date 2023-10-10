@@ -34,5 +34,10 @@ A new development team is tasked with creating a web based visualization tool. Y
 * The deployment workflow is placed in the **.github** folder, there are two main folders: _actions_ and _workflow_
   - actions: contains a _deploy.yml_ file that configures common steps for application deployment.
   - workflow: contains a _dotnet.yml_ file configuration for environments, currently non-prod and prod environments, if there is a new environment, we can add a job below.
-
+* The current deployment mechanism is that the application is deployed in Elastic Beanstalk service with deployment type Rolling update, the batch size is 50%, this will help the deployment to be zero downtime. (the condition is that we always have two instances at the time of deployment, otherwise, we will need to launch more instances).
 * (Note: the above configurations are based on practical experience and have not been tested due to lack of current environment, time, etc. Setting up a test environment will add more time to this challenge.)
+
+## To do
+* Set up the environment to test correctness.
+* Apply blue/green deployment mechanism for zero downtime during deployment and easy rollback.
+* Develop the application using configurations taken from the parameter store and update workflows.
