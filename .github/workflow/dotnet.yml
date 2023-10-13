@@ -1,21 +1,20 @@
-name: Deploy Development Environment
+name: Deploy Environment
 on:
   push:
-    branches: [ master ]
+    branches: [ develop ]
     
 jobs:
   Non-Prod:
-    runs-on: hosted-runner
+    runs-on: self-hosted
     environment: Development
     steps:
     - name: Checkout source code
       uses: actions/checkout@v3
       with:
         token: ${{ secrets.GH_TOKEN }}
-        submodules: true
 
     - name: Deploy
-      uses: ./.github/actions/deploy.yml
+      uses: ./.github/actions
       with:
         environment: Development
         account_id: ${{ env.aws_account_id}}
@@ -24,22 +23,22 @@ jobs:
         region: ca-central-1
 
 
-  Production:
-    runs-on: hosted-runner
-    environment: Production
-    steps:
-    - name: Checkout source code
-      uses: actions/checkout@v3
-      with:
-        token: ${{ secrets.GH_TOKEN }}
-        submodules: true
+  # Production:
+  #   runs-on: hosted-runner
+  #   environment: Production
+  #   steps:
+  #   - name: Checkout source code
+  #     uses: actions/checkout@v3
+  #     with:
+  #       token: ${{ secrets.GH_TOKEN }}
+  #       submodules: true
 
-    - name: Deploy
-      uses: ./.github/actions/deploy.yml
-      with:
-        environment: Production
-        account_id: ${{ env.aws_account_id}}
-        account_name: awsaccountprod
-        artifact_name: prod-s3-eb-deployment
-        region: ca-central-1
+  #   - name: Deploy
+  #     uses: ./.github/actions/deploy.yml
+  #     with:
+  #       environment: Production
+  #       account_id: ${{ env.aws_account_id}}
+  #       account_name: awsaccountprod
+  #       artifact_name: prod-s3-eb-deployment
+  #       region: ca-central-1
     
