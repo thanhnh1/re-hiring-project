@@ -1,0 +1,88 @@
+name: "Deploy Environment"
+
+description: "Deploy an environment"
+
+inputs:
+  aws_role_to_assume:
+    description: "AWS Role to assume"
+    require: true
+  aws_region:
+    description: "AWS Region"
+    default: "ca-central-1"
+    require: true
+  artifact_name:
+    description: "Aftifact store packages"
+    require: true
+  beanstalk_app:
+    description: "AWS Elastic Beanstalk application"
+    require: true
+  beanstalk_env:
+    description: "AWS Elastic Beanstalk environment"
+    require: true
+  environment:
+    description: "Application environment"
+    require: true
+
+runs:
+  using: "composite"
+  steps:
+    ## Used when running on a runner configured at the organization/enterprise level
+    # - name: Configure AWS Credentials
+    #   uses: aws-actions/configure-aws-credentials@v4
+    #   env:
+    #     ROLE_TO_ASSUME: ${{ inputs.aws_role_to_assume }}
+    #     AWS_REGION: ${{ inputs.aws_region }}
+    #   with:
+    #     role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+    #     aws-region: ${{ env.AWS_REGION }}
+
+    - name: Get current date
+      shell: bash
+      id: date
+      run: echo "::set-output name=date::$(date +'%Y%m%d%H%M%S')"
+
+    - name: Set current date
+      shell: bash
+      run: |
+        echo "VERSIONS=${{ steps.date.outputs.date }}" >> $GITHUB_ENV
+
+    - name: Setup dotnet
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: '3.1.x'
+    
+    - name: Display dotnet version
+      shell: bash
+      run: dotnet --version
+      
+    - name: Install dependencies and build code
+      shell: bash
+      env:
+        ENVIRONMENT: ${{ inputs.environment }}
+        ARTIFACT: ${{ inputs.artifact_name }}
+        BEANSTALK_APP: ${{ inputs.beanstalk_app }}
+        BEANSTALK_ENV: ${{ inputs.beanstalk_env }}
+      run: |
+        dotnet publish SampleApp.csproj -c ${{ env.ENVIRONMENT }}
+        cd bin/${{ env.ENVIRONMENT }}/netcoreapp3.1/publish
+        zip -r wwwroot.zip `ls -1 -d */`
+        rm -rf `ls -1 -d */`
+        zip ../site.zip *
+        mkdir tmp
+        cp ${{ github.workspace }}/bin/${{ env.ENVIRONMENT }}/netcoreapp3.1/site.zip tmp/
+        cp ${{ github.workspace }}/deployments/scripts/* tmp/
+        cd tmp
+        zip webapp-deployable.zip *
+
+        echo 'Upload to s3'
+        aws s3 cp webapp-deployable.zip s3://${{ env.ARTIFACT }} --region ca-central-1
+        echo 'Get current status of elasticbeanstalk'
+        currentStatus=`aws elasticbeanstalk describe-environments --environment-names ${{ env.BEANSTALK_ENV }} --region ca-central-1 | jq '."Environments" | .[] | ."Status"'`
+        echo $currentStatus
+        if [[ $currentStatus == '"Ready"' ]]
+        then
+          echo 'Create app version'
+          aws elasticbeanstalk create-application-version --application-name ${{ env.BEANSTALK_APP }}  --version-label "v1.0-$VERSIONS" --source-bundle S3Bucket=${{ env.ARTIFACT }},S3Key=webapp-deployable.zip --region ca-central-1
+          echo 'Update environment'
+          aws elasticbeanstalk update-environment --environment-name ${{ env.BEANSTALK_ENV }} --version-label "v1.0-$VERSIONS" --region ca-central-1
+        fi
