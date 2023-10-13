@@ -4,7 +4,7 @@ on:
     branches: [ develop ]
     
 jobs:
-  Non-Prod:
+  Development:
     runs-on: self-hosted
     environment: Development
     steps:
@@ -17,11 +17,9 @@ jobs:
       uses: ./.github/actions
       with:
         environment: Development
-        account_id: ${{ env.aws_account_id}}
-        account_name: awsaccountnp
+        aws_role_to_assume: ""
         artifact_name: np-s3-eb-deployment
-        region: ca-central-1
-
+        aws_region: ca-central-1
 
   # Production:
   #   runs-on: hosted-runner
