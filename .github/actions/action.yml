@@ -15,6 +15,13 @@ inputs:
     require: true
   artifact_name:
     description: "Aftifact store packages"
+    require: true
+  beanstalk_app:
+    description: "AWS Elastic Beanstalk application"
+    require: true
+  beanstalk_env:
+    description: "AWS Elastic Beanstalk environment"
+    require: true
 
 runs:
   using: "composite"
@@ -53,6 +60,8 @@ runs:
       env:
         ENVIRONMENT: ${{ inputs.environment }}
         ARTIFACT: ${{ inputs.artifact_name }}
+        BEANSTALK_APP: ${{ inputs.beanstalk_app }}
+        BEANSTALK_ENV: ${{ inputs.beanstalk_env }}
       run: |
         dotnet publish SampleApp.csproj -c ${{ env.ENVIRONMENT }}
         cd bin/${{ env.ENVIRONMENT }}/netcoreapp3.1/publish
@@ -67,13 +76,13 @@ runs:
 
         echo 'Upload to s3'
         aws s3 cp webapp-deployable.zip s3://${{ env.ARTIFACT }} --region ca-central-1
-        echo 'get current status of elasticbeanstalk'
-        currentStatus=`aws elasticbeanstalk describe-environments --environment-names beanstalk-env --region ca-central-1 | jq '."Environments" | .[] | ."Status"'`
+        echo 'Get current status of elasticbeanstalk'
+        currentStatus=`aws elasticbeanstalk describe-environments --environment-names ${{ env.BEANSTALK_ENV }} --region ca-central-1 | jq '."Environments" | .[] | ."Status"'`
         echo $currentStatus
         if [[ $currentStatus == '"Ready"' ]]
         then
-          echo 'create app version'
-          aws elasticbeanstalk create-application-version --application-name beanstalk-app  --version-label "v1.0-$VERSIONS" --source-bundle S3Bucket=${{ env.ARTIFACT }},S3Key=webapp-deployable.zip --region ca-central-1
-          echo 'update environment'
-          aws elasticbeanstalk update-environment --environment-name beanstalk-env --version-label "v1.0-$VERSIONS" --region ca-central-1
+          echo 'Create app version'
+          aws elasticbeanstalk create-application-version --application-name ${{ env.BEANSTALK_APP }}  --version-label "v1.0-$VERSIONS" --source-bundle S3Bucket=${{ env.ARTIFACT }},S3Key=webapp-deployable.zip --region ca-central-1
+          echo 'Update environment'
+          aws elasticbeanstalk update-environment --environment-name ${{ env.BEANSTALK_ENV }} --version-label "v1.0-$VERSIONS" --region ca-central-1
         fi

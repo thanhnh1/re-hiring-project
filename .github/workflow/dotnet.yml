@@ -16,10 +16,12 @@ jobs:
     - name: Deploy
       uses: ./.github/actions
       with:
-        environment: Development
         aws_role_to_assume: ""
-        artifact_name: np-s3-eb-deployment
         aws_region: ca-central-1
+        artifact_name: np-s3-eb-deployment
+        beanstalk_app: np-beanstalk-app
+        beanstalk_env: np-beanstalk-env
+        environment: Development
 
   # Production:
   #   runs-on: hosted-runner
