@@ -10,9 +10,6 @@ inputs:
     description: "AWS Region"
     default: "ca-central-1"
     require: true
-  environment:
-    description: "Application environment"
-    require: true
   artifact_name:
     description: "Aftifact store packages"
     require: true
@@ -21,6 +18,9 @@ inputs:
     require: true
   beanstalk_env:
     description: "AWS Elastic Beanstalk environment"
+    require: true
+  environment:
+    description: "Application environment"
     require: true
 
 runs:
